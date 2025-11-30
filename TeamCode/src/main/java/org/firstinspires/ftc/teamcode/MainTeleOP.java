@@ -29,52 +29,54 @@ public class MainTeleOP extends LinearOpMode {
     double Kd = PIDConstants.Kd;
 
     Drivetrain drivetrain = new Drivetrain();
-
     ElapsedTime timer = new ElapsedTime();        // for PID dt
     ElapsedTime headingTimer = new ElapsedTime(); // for gyro integration dt
-    private double lastError = 0;
 
-    private MPU6050 imu;          // our MPU6050
-    private double heading = 0.0; // current heading estimate (radians)
-    private double gyroBiasDps = 0.0; // gyro Z bias (deg/s)
+    private double lastError = 0;
+    private MPU6050 imu; // our MPU6050
+
+    private double heading = 0.0;      // current heading estimate (radians)
+    private double gyroBiasDps = 0.0;  // gyro Z bias (deg/s)
 
     private double refrenceBeforeRads = 90;
     private double refrenceAngle;
 
     @Override
     public void runOpMode() {
-        frontLeft  = hardwareMap.get(DcMotor.class, "frontLeft");
+        frontLeft = hardwareMap.get(DcMotor.class, "frontLeft");
         frontRight = hardwareMap.get(DcMotor.class, "frontRight");
-        backLeft   = hardwareMap.get(DcMotor.class, "backLeft");
-        backRight  = hardwareMap.get(DcMotor.class, "backRight");
-
-        intakeMotor  = hardwareMap.get(DcMotor.class, "intake");
+        backLeft = hardwareMap.get(DcMotor.class, "backLeft");
+        backRight = hardwareMap.get(DcMotor.class, "backRight");
+        intakeMotor = hardwareMap.get(DcMotor.class, "intake");
 
         frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-
         intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         // Typical FTC setup: reverse the left side so +power drives all wheels forward
         frontLeft.setDirection(DcMotor.Direction.REVERSE);
         backLeft.setDirection(DcMotor.Direction.REVERSE);
 
-        throwing  = false;
-        intake    = false;
+        throwing = false;
+        intake = false;
 
+        telemetry = new MultipleTelemetry(
+                telemetry,
+                FtcDashboard.getInstance().getTelemetry()
+        );
 
-        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         drivetrain.init(hardwareMap);
 
         // Get our MPU device from the hardwareMap (name must match RC config)
         imu = hardwareMap.get(MPU6050.class, "imu");
-        imu.initialize();  // calls doInitialize() inside your driver
+        imu.initialize(); // calls doInitialize() inside your driver
 
         // --- Gyro calibration ---
         calibrateGyroZ();
-        refrenceBeforeRads = 90;
+
+        refrenceBeforeRads = 0;
         refrenceAngle = Math.toRadians(refrenceBeforeRads); // 90 degrees in radians
 
         timer.reset();
@@ -82,13 +84,19 @@ public class MainTeleOP extends LinearOpMode {
         heading = 0.0; // define current orientation as 0 at start
 
         waitForStart();
+
         while (opModeIsActive()) {
+            //updateHeadingFromGyro();
+
             gamepadInput();
             mecanumDrive();
             doTelemetry(refrenceAngle);
-            updateHeadingFromGyro();
-            double power = PIDControl(refrenceAngle, heading);
-            drivetrain.power(power);
+            if (gamepad1.left_stick_y == 0 && gamepad1.left_stick_x == 0 && gamepad1.right_stick_x == 0 && !gamepad1.left_bumper) {
+                //double power = PIDControl(refrenceAngle, heading);
+
+                //drivetrain.power(power);
+            }
+
         }
     }
 
@@ -97,9 +105,9 @@ public class MainTeleOP extends LinearOpMode {
     }
 
     private void mecanumDrive() {
-        double y  = -deadband(gamepad1.left_stick_y);      // stick up = forward
-        double x  = deadband(gamepad1.left_stick_x) * 1.1; // inverted strafe input
-        double rx =  deadband(gamepad1.right_stick_x);
+        double y = -deadband(gamepad1.left_stick_y);           // stick up = forward
+        double x = deadband(gamepad1.left_stick_x) * 1.1;      // inverted strafe input
+        double rx = deadband(gamepad1.right_stick_x);
 
         double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1.0);
 
@@ -108,28 +116,28 @@ public class MainTeleOP extends LinearOpMode {
         double rf = (y - x - rx) / denominator;
         double rb = (y + x - rx) / denominator;
 
-        if ( gamepad1.right_stick_x < 0){
-            refrenceBeforeRads++;
-        } else if ( gamepad1.right_stick_x > 0){
-            refrenceBeforeRads--;
+        if (gamepad1.right_stick_x < 0) {
+            refrenceBeforeRads = refrenceBeforeRads + (rx + 0.2);
+        } else if (gamepad1.right_stick_x > 0) {
+            refrenceBeforeRads = refrenceBeforeRads - (rx + 0.2);
         }
+
         refrenceAngle = Math.toRadians(refrenceBeforeRads);
 
         frontLeft.setPower(lf * speedScale);
         backLeft.setPower(lb * speedScale);
-        frontRight.setPower(rf * speedScale); //
+        frontRight.setPower(rf * speedScale);
         backRight.setPower(rb * speedScale);
-
     }
 
     private void gamepadInput() {
         // Speed modes
         if (gamepad1.left_bumper) {
-            speedScale = 0.4;  // precision
+            speedScale = 0.4; // precision
         } else if (gamepad1.right_bumper) {
-            speedScale = 1.0;  // full speed
+            speedScale = 1.0; // full speed
         } else {
-            speedScale = 0.8;  // default
+            speedScale = 0.8; // default
         }
 
         // Example mechanism control (range -1..1). Replace with your motor/CRServo as needed.
@@ -148,7 +156,6 @@ public class MainTeleOP extends LinearOpMode {
             intake = false;
             intakeMotor.setPower(0);
         }
-
     }
 
     public double PIDControl(double refrence, double state) {
@@ -157,6 +164,7 @@ public class MainTeleOP extends LinearOpMode {
 
         double dt = timer.seconds();
         integralSum += error * dt;
+
         double derivative = (error - lastError) / dt;
         lastError = error;
         timer.reset();
@@ -230,8 +238,7 @@ public class MainTeleOP extends LinearOpMode {
         telemetry.addData("Target IMU Angle (rad)", refrenceAngle);
         telemetry.addData("Current IMU Angle (rad)", heading);
         telemetry.addData("Current IMU Angle (deg)", Math.toDegrees(heading));
-        double power = PIDControl(refrenceAngle, heading);
-        drivetrain.power(power);
+
         telemetry.update();
     }
 }
