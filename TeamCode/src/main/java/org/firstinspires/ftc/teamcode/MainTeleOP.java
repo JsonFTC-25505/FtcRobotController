@@ -6,7 +6,9 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.util.Range;
 
+import org.firstinspires.ftc.teamcode.OpModes.PIDController.PID;
 import org.firstinspires.ftc.teamcode.drivers.MPU6050;
 
 @TeleOp(name = "Main TeleOP (fixed mecanum - from AD-Studio)")
@@ -16,6 +18,13 @@ public class MainTeleOP extends LinearOpMode {
 
     // Overall drive scale (left bumper = slow, right bumper = fast)
     private double speedScale = 0.5;
+
+    private PID headingPID;
+    private double headingRad = 0.0;
+    private double targetHeadingRad = 0.0;
+
+    private double gyroBiasDps = 0.0; // if you calibrate
+    private boolean headingHoldActive = false;
 
     private boolean throwing;
     private boolean intake;
@@ -61,17 +70,19 @@ public class MainTeleOP extends LinearOpMode {
 //        calibrateGyroZ();
 
         timer.reset();
-        headingTimer.reset();
-
+        calibrateGyroZ();
         waitForStart();
+        headingTimer.reset();
+        updateHeadingFromGyro();              // get a first sample
+        targetHeadingRad = headingRad;
+        headingPID = new PID(targetHeadingRad);
+        headingPID.reset();
 
         while (opModeIsActive()) {
-            //updateHeadingFromGyro();
-
+            updateHeadingFromGyro();
             gamepadInput();
             mecanumDrive();
             doTelemetry();
-
         }
     }
 
@@ -79,10 +90,62 @@ public class MainTeleOP extends LinearOpMode {
         return Math.abs(v) > 0.05 ? v : 0.0;
     }
 
+    private void updateHeadingFromGyro() {
+        MPU6050.Sample s = imu.readSample();
+
+        double dt = headingTimer.seconds();   // seconds since last call
+        headingTimer.reset();
+        if (dt < 1e-4) dt = 1e-4;
+
+        double gzDps = s.gzDps - gyroBiasDps;        // deg/s
+        double gzRadPerSec = Math.toRadians(gzDps);  // rad/s
+
+        headingRad = angleWrap(headingRad - gzRadPerSec * dt);
+    }
+
     private void mecanumDrive() {
-        double y = -deadband(gamepad1.left_stick_y);           // stick up = forward
-        double x = deadband(gamepad1.left_stick_x) * 1.1;      // inverted strafe input
-        double rx = deadband(gamepad1.right_stick_x);
+        double y = -deadband(gamepad1.left_stick_y);
+        double x = deadband(gamepad1.left_stick_x) * 1.1;
+        double rxManual = deadband(gamepad1.right_stick_x);
+
+        boolean driverTurning = Math.abs(rxManual) > 0.05;
+        boolean driverMoving  = (Math.abs(x) + Math.abs(y)) > 0.05;
+
+        double rx; // final rotation command used by mecanum
+
+
+        if (driverTurning) {
+            rx = rxManual;
+
+            // update target continuously while turning
+            targetHeadingRad = headingRad;
+            headingPID.setSetPoint(targetHeadingRad);
+
+            headingHoldActive = false; // we are not holding
+        }
+        else if (driverMoving) {
+            // entering heading-hold for the first time -> reset once
+            if (!headingHoldActive) {
+                targetHeadingRad = headingRad;
+                headingPID.setSetPoint(targetHeadingRad);
+                headingPID.reset();
+                headingHoldActive = true;
+            }
+
+            double correction = headingPID.computeAngle(headingRad);
+
+            double maxAutoTurn = 0.6;
+            rx = Range.clip(correction, -maxAutoTurn, maxAutoTurn);
+        }
+        else {
+            // stopped: just lock target to current, but don't spam reset every loop
+            rx = 0.0;
+
+            targetHeadingRad = headingRad;
+            headingPID.setSetPoint(targetHeadingRad);
+
+            headingHoldActive = false;
+        }
 
         double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1.0);
 
@@ -118,7 +181,7 @@ public class MainTeleOP extends LinearOpMode {
 
         if (gamepad1.left_trigger > 0.1) {
             intake = true;
-            intakeMotor.setPower(5);
+            intakeMotor.setPower(1.0);
         } else {
             intake = false;
             intakeMotor.setPower(0);
@@ -142,25 +205,25 @@ public class MainTeleOP extends LinearOpMode {
      * Calibrate gyro Z bias while robot is still.
      * Call this BEFORE waitForStart().
      */
-//    private void calibrateGyroZ() {
-//        telemetry.addLine("Calibrating gyro Z... DO NOT MOVE ROBOT");
-//        telemetry.update();
-//
-//        double sum = 0;
-//        int samples = 200; // ~1s at 5ms per sample
-//
-//        for (int i = 0; i < samples; i++) {
-//            MPU6050.Sample s = imu.readSample();
-//            sum += s.gzDps;
-//            sleep(5); // LinearOpMode.sleep
-//        }
-//
-//        gyroBiasDps = sum / samples;
-//
-//        telemetry.addData("Gyro Z bias (deg/s)", gyroBiasDps);
-//        telemetry.addLine("Calibration complete");
-//        telemetry.update();
-//    }
+    private void calibrateGyroZ() {
+        telemetry.addLine("Calibrating gyro Z... DO NOT MOVE ROBOT");
+        telemetry.update();
+
+        double sum = 0.0;
+        int samples = 300;
+
+        for (int i = 0; i < samples; i++) {
+            MPU6050.Sample s = imu.readSample();
+            sum += s.gzDps;
+            sleep(5);
+        }
+
+        gyroBiasDps = sum / samples;
+
+        telemetry.addData("Gyro Z bias (deg/s)", gyroBiasDps);
+        telemetry.addLine("Calibration complete");
+        telemetry.update();
+    }
 
     private void doTelemetry() {
         telemetry.addData("Speed Scale", "%.2f", speedScale);
