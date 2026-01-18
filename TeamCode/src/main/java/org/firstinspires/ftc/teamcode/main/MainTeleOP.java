@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.main;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
@@ -11,12 +11,11 @@ import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.teamcode.OpModes.PIDController.PID;
 import org.firstinspires.ftc.teamcode.drivers.MPU6050;
 
-@TeleOp(name = "Main TeleOP (fixed mecanum - from AD-Studio)")
+@TeleOp(name = "Main TeleOP")
 public class MainTeleOP extends LinearOpMode {
 
     private DcMotor frontLeft, frontRight, backLeft, backRight, intakeMotor;
 
-    // Overall drive scale (left bumper = slow, right bumper = fast)
     private double speedScale = 0.5;
 
     private PID headingPID;
@@ -50,7 +49,6 @@ public class MainTeleOP extends LinearOpMode {
         backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
-        // Typical FTC setup: reverse the left side so +power drives all wheels forward
         frontLeft.setDirection(DcMotor.Direction.REVERSE);
         backLeft.setDirection(DcMotor.Direction.REVERSE);
 
@@ -64,10 +62,7 @@ public class MainTeleOP extends LinearOpMode {
 
         // Get our MPU device from the hardwareMap (name must match RC config)
         imu = hardwareMap.get(MPU6050.class, "imu");
-        imu.initialize(); // calls doInitialize() inside your driver
-
-        // --- Gyro calibration ---
-//        calibrateGyroZ();
+        imu.initialize();
 
         timer.reset();
         calibrateGyroZ();
