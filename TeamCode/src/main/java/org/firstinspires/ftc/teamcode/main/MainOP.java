@@ -1,3 +1,12 @@
+// COPYRIGHT ODYSSEAS CHRYSSOS | JsonFtc TALOS 2025-2026
+//
+// Main Autonomus System For the JsonFTC (TalOS) team.
+// Currently: Recognises april tags and "lock" into them
+// To-DO:
+// - Make Search For AprilTag Mode (also needs to be implemented on teleOP so i will do it in its own class.)
+// - Make the moving part of the roboto so it can complete mision.
+//
+
 package org.firstinspires.ftc.teamcode.main;
 
 import com.acmerobotics.dashboard.config.Config;
@@ -16,11 +25,11 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 @Autonomous(name = "Main OP")
 public class MainOP extends OpMode {
 
-    // [=][=][=] MotoConfig [=][=][=]
+    // ========= MotoConfig =========
     private DcMotor frontLeft, frontRight, backLeft, backRight, intakeMotor;
     private double speedScale = 0.5;
 
-    // [=][=][=] PID Config [=][=][=]
+    // ========= PID Config =========
     private PID headingPID;
     private double headingRad = 0.0;
     private double targetHeadingRad = 0.0;
@@ -35,7 +44,7 @@ public class MainOP extends OpMode {
     ElapsedTime timer = new ElapsedTime();        // for PID dt
     ElapsedTime headingTimer = new ElapsedTime(); // for gyro integration dt
 
-    // [=][=][=] AprilTag Config [=][=][=]
+    // ========= AprilTag Config =========
     public static int tagId = 21;
 
     AprilTagWebcam aprilTagWebcam = new AprilTagWebcam();
@@ -91,7 +100,7 @@ public class MainOP extends OpMode {
     @Override
     public void init()
     {
-        // [=][=][=] Motor Setup [=][=][=]
+        // ========= Motor Setup =========
 
         frontLeft = hardwareMap.get(DcMotor.class, "frontLeft");
         frontRight = hardwareMap.get(DcMotor.class, "frontRight");

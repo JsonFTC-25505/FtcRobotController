@@ -1,3 +1,13 @@
+// COPYRIGHT ODYSSEAS CHRYSSOS | JsonFtc TALOS 2025-2026
+//
+// AprilTag Scanning System For the JsonFTC (TalOS) team.
+// Recoginses April Tags And Returns them into a "list"
+//
+// Methods:
+// Name         | Arguments | Action
+// getTagById() | int id    | Gets the id requested if it has been "spoted" by the camara
+//
+
 package org.firstinspires.ftc.teamcode.mechanisms;
 
 import android.util.Size;
@@ -68,7 +78,7 @@ public class AprilTagWebcam {
             telemetry.addLine(String.format("Center %6.0f %6.0f   (pixels)", detection.center.x, detection.center.y));
         }
         telemetry.update();
-    }   // end for() loop
+    }
 
     public AprilTagDetection getTagById(int id){
         for(AprilTagDetection detection: detectedTags){

@@ -1,3 +1,12 @@
+// COPYRIGHT ODYSSEAS CHRYSSOS | JsonFtc TALOS 2025-2026
+//
+// Main TeleConroll System For the JsonFTC (TalOS) team.
+// Currently: Recognises april tags and "lock" into them
+// To-DO:
+// - Make Search For AprilTag Mode (also needs to be implemented on teleOP so i will do it in its own class.)
+// - Make the shorting Code based of april tags
+//
+
 package org.firstinspires.ftc.teamcode.main;
 
 import com.acmerobotics.dashboard.FtcDashboard;
