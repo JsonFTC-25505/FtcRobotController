@@ -1,10 +1,10 @@
 // COPYRIGHT ODYSSEAS CHRYSSOS | JsonFtc TALOS 2025-2026
 //
-// Main Autonomus System For the JsonFTC (TalOS) team.
+// Main Autonomous System For the JsonFTC (TalOS) team.
 // Currently: Recognises april tags and "lock" into them
 // To-DO:
 // - Make Search For AprilTag Mode (also needs to be implemented on teleOP so i will do it in its own class.)
-// - Make the moving part of the roboto so it can complete mision.
+// - Make the moving part of the roboto so it can complete mission.
 //
 
 package org.firstinspires.ftc.teamcode.main;
@@ -16,7 +16,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
-import org.firstinspires.ftc.teamcode.OpModes.PIDController.PID;
+import org.firstinspires.ftc.teamcode.mechanisms.PID;
 import org.firstinspires.ftc.teamcode.drivers.MPU6050;
 import org.firstinspires.ftc.teamcode.mechanisms.AprilTagWebcam;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
@@ -48,6 +48,8 @@ public class MainOP extends OpMode {
     public static int tagId = 21;
 
     AprilTagWebcam aprilTagWebcam = new AprilTagWebcam();
+
+    // ========= ColorSensor Config =========
 
     public double angleWrap(double radians) {
         while (radians > Math.PI) {

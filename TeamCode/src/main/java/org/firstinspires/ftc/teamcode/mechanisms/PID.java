@@ -1,11 +1,22 @@
-package org.firstinspires.ftc.teamcode.OpModes.PIDController;
+// COPYRIGHT ODYSSEAS CHRYSSOS | JsonFtc TALOS 2025-2026
+//
+// PID System For the JsonFTC (TalOS) team.
+// Does PID For Values
+//
+// Methods:
+// Name           | Arguments               | Action
+// compute()      | double processVar       | PID output for a normal (non-angular) variable
+// computeAngle() | double headingRad       | PID output for angles in radians (wraps error to [-pi, pi])
+// setSetPoint()  | double setP             | Updates the setpoint
+// reset()        | -                       | Resets integral/previous error and timer
+//
+
+package org.firstinspires.ftc.teamcode.mechanisms;
 import com.qualcomm.robotcore.util.Range;
 
-import org.firstinspires.ftc.teamcode.OpModes.PIDController.PIDConstants;
+import org.firstinspires.ftc.teamcode.utils.PIDConstants;
 
-import java.security.Timestamp;
 import java.lang.System;
-import java.util.Date;
 
 public class PID {
     private double setPoint;

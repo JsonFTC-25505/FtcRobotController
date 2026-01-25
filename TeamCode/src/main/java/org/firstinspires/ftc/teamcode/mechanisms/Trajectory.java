@@ -4,7 +4,7 @@
 //
 // Methods:
 // Name         | Arguments | Action
-// compute() | int x    | Calculates & returns the 2 possible angles for the dispenser based on distance (x)
+// compute()    | int x     | Calculates & returns the 2 possible angles for the dispenser based on distance (x)
 //
 
 package org.firstinspires.ftc.teamcode.mechanisms;

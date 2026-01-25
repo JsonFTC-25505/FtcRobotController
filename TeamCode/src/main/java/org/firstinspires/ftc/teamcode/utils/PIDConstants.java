@@ -1,7 +1,6 @@
-package org.firstinspires.ftc.teamcode.OpModes.PIDController;
+package org.firstinspires.ftc.teamcode.utils;
 
 import com.acmerobotics.dashboard.config.Config;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 @Config
 public class PIDConstants {

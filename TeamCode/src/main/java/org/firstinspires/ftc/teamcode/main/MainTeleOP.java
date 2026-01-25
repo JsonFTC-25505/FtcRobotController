@@ -1,6 +1,6 @@
 // COPYRIGHT ODYSSEAS CHRYSSOS | JsonFtc TALOS 2025-2026
 //
-// Main TeleConroll System For the JsonFTC (TalOS) team.
+// Main TeleControll System For the JsonFTC (TalOS) team.
 // Currently: Recognises april tags and "lock" into them
 // To-DO:
 // - Make Search For AprilTag Mode (also needs to be implemented on teleOP so i will do it in its own class.)
@@ -14,12 +14,13 @@ import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
-import org.firstinspires.ftc.teamcode.OpModes.PIDController.PID;
+import org.firstinspires.ftc.teamcode.mechanisms.PID;
 import org.firstinspires.ftc.teamcode.drivers.MPU6050;
+import org.firstinspires.ftc.teamcode.mechanisms.AprilTagWebcam;
+import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
 @TeleOp(name = "Main TeleOP")
 public class MainTeleOP extends LinearOpMode {
@@ -38,6 +39,16 @@ public class MainTeleOP extends LinearOpMode {
     private boolean throwing;
     private boolean intake;
     private double dispensePower;
+
+    private enum Balls {
+        PPG,
+        PGP,
+        GPP
+    }
+
+    Balls ballComp;
+
+    AprilTagWebcam aprilTagWebcam = new AprilTagWebcam();
 
     ElapsedTime timer = new ElapsedTime();        // for PID dt
     ElapsedTime headingTimer = new ElapsedTime(); // for gyro integration dt
@@ -77,9 +88,10 @@ public class MainTeleOP extends LinearOpMode {
 
         timer.reset();
         calibrateGyroZ();
+        aprilTagWebcam.init(hardwareMap, telemetry);
         waitForStart();
         headingTimer.reset();
-        updateHeadingFromGyro();              // get a first sample
+        updateHeadingFromGyro();
         targetHeadingRad = headingRad;
         headingPID = new PID(targetHeadingRad);
         headingPID.reset();
@@ -88,8 +100,19 @@ public class MainTeleOP extends LinearOpMode {
             updateHeadingFromGyro();
             gamepadInput();
             mecanumDrive();
+            aprilTagWebcam.update();
+            if (ballComp == null) {
+                ballComp = getBallComp();
+            }
             doTelemetry();
         }
+    }
+
+    private Balls getBallComp(){
+        AprilTagDetection tag = aprilTagWebcam.getTagByPrefix("Obelisk_");
+        if (tag == null) { return null; }
+        String comp = tag.metadata.name.split("_")[1];
+        return Balls.valueOf(comp);
     }
 
     private double deadband(double v) {
@@ -235,7 +258,8 @@ public class MainTeleOP extends LinearOpMode {
         telemetry.addData("Speed Scale", "%.2f", speedScale);
         telemetry.addData("Throwing", throwing);
         telemetry.addData("Dispense Power", "%.2f", dispensePower);
-        telemetry.addData("Intake", intake);;
+        telemetry.addData("Intake", intake);
+        telemetry.addData("BallComp", ballComp);
 
         telemetry.update();
     }
