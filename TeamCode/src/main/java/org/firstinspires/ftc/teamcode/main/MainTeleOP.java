@@ -17,6 +17,8 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
+import org.firstinspires.ftc.teamcode.mechanisms.CanononController;
+import org.firstinspires.ftc.teamcode.mechanisms.HoodControll;
 import org.firstinspires.ftc.teamcode.mechanisms.PID;
 import org.firstinspires.ftc.teamcode.drivers.MPU6050;
 import org.firstinspires.ftc.teamcode.mechanisms.AprilTagWebcam;
@@ -50,10 +52,13 @@ public class MainTeleOP extends LinearOpMode {
 
     AprilTagWebcam aprilTagWebcam = new AprilTagWebcam();
 
+    HoodControll hoodControll = new HoodControll();
+
+    CanononController canononController = new CanononController();
+
     ElapsedTime timer = new ElapsedTime();        // for PID dt
     ElapsedTime headingTimer = new ElapsedTime(); // for gyro integration dt
 
-    private double lastError = 0;
     private MPU6050 imu; // our MPU6050
 
     @Override
@@ -89,6 +94,8 @@ public class MainTeleOP extends LinearOpMode {
         timer.reset();
         calibrateGyroZ();
         aprilTagWebcam.init(hardwareMap, telemetry);
+        hoodControll.init(hardwareMap, telemetry);
+        canononController.init(hardwareMap);
         waitForStart();
         headingTimer.reset();
         updateHeadingFromGyro();
@@ -199,13 +206,21 @@ public class MainTeleOP extends LinearOpMode {
             speedScale = 0.8; // default
         }
 
+        if(gamepad1.a) {
+            hoodControll.setAngleDeg(110);
+        } else if(gamepad1.b) {
+            hoodControll.setAngleDeg(-55);
+        }
+
         // Example mechanism control (range -1..1). Replace with your motor/CRServo as needed.
         if (gamepad1.right_trigger > 0.1) {
             throwing = true;
             dispensePower = gamepad1.right_trigger; // 0..1
+            canononController.canonize();
         } else {
             throwing = false;
             dispensePower = 0.0;
+            canononController.unCanonize();
         }
 
         if (gamepad1.left_trigger > 0.1) {
