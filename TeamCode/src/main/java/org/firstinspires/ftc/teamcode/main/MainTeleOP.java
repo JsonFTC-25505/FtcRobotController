@@ -17,8 +17,8 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
-import org.firstinspires.ftc.teamcode.mechanisms.CanononController;
-import org.firstinspires.ftc.teamcode.mechanisms.HoodControll;
+import org.firstinspires.ftc.teamcode.mechanisms.CannonController;
+import org.firstinspires.ftc.teamcode.mechanisms.HoodControl;
 import org.firstinspires.ftc.teamcode.mechanisms.PID;
 import org.firstinspires.ftc.teamcode.drivers.MPU6050;
 import org.firstinspires.ftc.teamcode.mechanisms.AprilTagWebcam;
@@ -48,21 +48,27 @@ public class MainTeleOP extends LinearOpMode {
         GPP
     }
 
-    Balls ballComp;
+    Balls ballCombination;
 
     AprilTagWebcam aprilTagWebcam = new AprilTagWebcam();
 
-    HoodControll hoodControll = new HoodControll();
+    HoodControl hoodControl = new HoodControl();
 
-    CanononController canononController = new CanononController();
+    CannonController cannonController = new CannonController();
 
     ElapsedTime timer = new ElapsedTime();        // for PID dt
     ElapsedTime headingTimer = new ElapsedTime(); // for gyro integration dt
 
     private MPU6050 imu; // our MPU6050
 
-    @Override
-    public void runOpMode() {
+    private void initializeTelemetry() {
+        telemetry = new MultipleTelemetry(
+                telemetry,
+                FtcDashboard.getInstance().getTelemetry()
+        );
+    }
+
+    private void initializeMotors(){
         frontLeft = hardwareMap.get(DcMotor.class, "frontLeft");
         frontRight = hardwareMap.get(DcMotor.class, "frontRight");
         backLeft = hardwareMap.get(DcMotor.class, "backLeft");
@@ -81,12 +87,9 @@ public class MainTeleOP extends LinearOpMode {
 
         throwing = false;
         intake = false;
+    }
 
-        telemetry = new MultipleTelemetry(
-                telemetry,
-                FtcDashboard.getInstance().getTelemetry()
-        );
-
+    private void initializeSensors(){
         // Get our MPU device from the hardwareMap (name must match RC config)
         imu = hardwareMap.get(MPU6050.class, "imu");
         imu.initialize();
@@ -94,28 +97,46 @@ public class MainTeleOP extends LinearOpMode {
         timer.reset();
         calibrateGyroZ();
         aprilTagWebcam.init(hardwareMap, telemetry);
-        hoodControll.init(hardwareMap, telemetry);
-        canononController.init(hardwareMap);
-        waitForStart();
+    }
+
+    private void initializeControllers(){
+        hoodControl.init(hardwareMap, telemetry);
+        cannonController.init(hardwareMap);
+    }
+
+    private void setupPID(){
         headingTimer.reset();
         updateHeadingFromGyro();
         targetHeadingRad = headingRad;
         headingPID = new PID(targetHeadingRad);
         headingPID.reset();
+    }
+
+    @Override
+    public void runOpMode() {
+        // Initializers
+        initializeTelemetry();
+        initializeMotors();
+        initializeSensors();
+        initializeControllers();
+
+        waitForStart();
+
+        setupPID();
 
         while (opModeIsActive()) {
             updateHeadingFromGyro();
             gamepadInput();
             mecanumDrive();
             aprilTagWebcam.update();
-            if (ballComp == null) {
-                ballComp = getBallComp();
+            if (ballCombination == null) {
+                ballCombination = getBallCombination();
             }
             doTelemetry();
         }
     }
 
-    private Balls getBallComp(){
+    private Balls getBallCombination(){
         AprilTagDetection tag = aprilTagWebcam.getTagByPrefix("Obelisk_");
         if (tag == null) { return null; }
         String comp = tag.metadata.name.split("_")[1];
@@ -197,6 +218,44 @@ public class MainTeleOP extends LinearOpMode {
     }
 
     private void gamepadInput() {
+        speedGamepadController();
+        hoodGamepadController();
+        canonGamepadController();
+        intakeGamepadController();
+    }
+
+    private void intakeGamepadController() {
+        if (gamepad1.left_trigger > 0.1) {
+            intake = true;
+            intakeMotor.setPower(1.0);
+        } else {
+            intake = false;
+            intakeMotor.setPower(0);
+        }
+    }
+
+    private void canonGamepadController() {
+        // Example mechanism control (range -1..1). Replace with your motor/CRServo as needed.
+        if (gamepad1.right_trigger > 0.1) {
+            throwing = true;
+            dispensePower = gamepad1.right_trigger; // 0..1
+            cannonController.canonize();
+        } else {
+            throwing = false;
+            dispensePower = 0.0;
+            cannonController.unCanonize();
+        }
+    }
+
+    private void hoodGamepadController() {
+        if(gamepad1.a) {
+            hoodControl.setAngleDeg(110);
+        } else if(gamepad1.b) {
+            hoodControl.setAngleDeg(-55);
+        }
+    }
+
+    private void speedGamepadController() {
         // Speed modes
         if (gamepad1.left_bumper) {
             speedScale = 0.4; // precision
@@ -204,31 +263,6 @@ public class MainTeleOP extends LinearOpMode {
             speedScale = 1.0; // full speed
         } else {
             speedScale = 0.8; // default
-        }
-
-        if(gamepad1.a) {
-            hoodControll.setAngleDeg(110);
-        } else if(gamepad1.b) {
-            hoodControll.setAngleDeg(-55);
-        }
-
-        // Example mechanism control (range -1..1). Replace with your motor/CRServo as needed.
-        if (gamepad1.right_trigger > 0.1) {
-            throwing = true;
-            dispensePower = gamepad1.right_trigger; // 0..1
-            canononController.canonize();
-        } else {
-            throwing = false;
-            dispensePower = 0.0;
-            canononController.unCanonize();
-        }
-
-        if (gamepad1.left_trigger > 0.1) {
-            intake = true;
-            intakeMotor.setPower(1.0);
-        } else {
-            intake = false;
-            intakeMotor.setPower(0);
         }
     }
 
@@ -274,7 +308,7 @@ public class MainTeleOP extends LinearOpMode {
         telemetry.addData("Throwing", throwing);
         telemetry.addData("Dispense Power", "%.2f", dispensePower);
         telemetry.addData("Intake", intake);
-        telemetry.addData("BallComp", ballComp);
+        telemetry.addData("Ball Combination", ballCombination);
 
         telemetry.update();
     }

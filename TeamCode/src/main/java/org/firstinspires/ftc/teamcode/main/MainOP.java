@@ -9,7 +9,9 @@
 
 package org.firstinspires.ftc.teamcode.main;
 
+import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -27,7 +29,7 @@ public class MainOP extends OpMode {
 
     // ========= MotoConfig =========
     private DcMotor frontLeft, frontRight, backLeft, backRight, intakeMotor;
-    private double speedScale = 0.5;
+    private double speedScale = 0.7;
 
     // ========= PID Config =========
     private PID headingPID;
@@ -45,7 +47,7 @@ public class MainOP extends OpMode {
     ElapsedTime headingTimer = new ElapsedTime(); // for gyro integration dt
 
     // ========= AprilTag Config =========
-    public static int tagId = 21;
+    public static int tagId = 24;
 
     AprilTagWebcam aprilTagWebcam = new AprilTagWebcam();
 
@@ -99,6 +101,13 @@ public class MainOP extends OpMode {
         headingRad = angleWrap(headingRad - gzRadPerSec * dt);
     }
 
+    private void initializeTelemetry() {
+        telemetry = new MultipleTelemetry(
+                telemetry,
+                FtcDashboard.getInstance().getTelemetry()
+        );
+    }
+
     @Override
     public void init()
     {
@@ -117,6 +126,8 @@ public class MainOP extends OpMode {
         frontLeft.setDirection(DcMotor.Direction.REVERSE);
         backLeft.setDirection(DcMotor.Direction.REVERSE);
 
+        initializeTelemetry();
+
         imu = hardwareMap.get(MPU6050.class, "imu");
         imu.initialize();
 
@@ -127,6 +138,7 @@ public class MainOP extends OpMode {
         targetHeadingRad = headingRad;
         headingPID = new PID(targetHeadingRad);
         headingPID.reset();
+
 
         aprilTagWebcam.init(hardwareMap, telemetry);
     }
@@ -162,7 +174,6 @@ public class MainOP extends OpMode {
             rx = Range.clip(correction, -maxAutoTurn, maxAutoTurn);
 
         } else {
-            // IMPORTANT: if tag not seen, stop (or do your search behavior)
             tracking = false;
             rx = 0.0; // or a small constant to SEARCH, like 0.15
         }

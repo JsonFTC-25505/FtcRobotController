@@ -39,7 +39,7 @@ public class AprilTagWebcam {
     private Telemetry telemetry;
 
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
-        this.telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
+        this.telemetry = telemetry;
 
         aprilTagProcessor = new AprilTagProcessor.Builder()
                 .setTagLibrary(AprilTagGameDatabase.getCurrentGameTagLibrary())
@@ -66,10 +66,14 @@ public class AprilTagWebcam {
 
     public List<AprilTagDetection> getDetectedTags() { return detectedTags; }
 
+    public boolean hasMetadata(AprilTagDetection aprilTagDetection) {
+        return aprilTagDetection.metadata != null;
+    }
+
     public void aprilTagTelemetry(AprilTagDetection detection){
         if (detection == null) {return;}
 
-        if (detection.metadata != null) {
+        if (hasMetadata(detection)) {
             telemetry.addLine(String.format("\n==== (ID %d) %s", detection.id, detection.metadata.name));
             telemetry.addLine(String.format("XYZ %6.1f %6.1f %6.1f  (cm)", detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));
             telemetry.addLine(String.format("PRY %6.1f %6.1f %6.1f  (deg)", detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
@@ -93,7 +97,7 @@ public class AprilTagWebcam {
 
     public AprilTagDetection getTagByPrefix(String prefix){
         for(AprilTagDetection detection: detectedTags){
-            if (detection.metadata.name.startsWith(prefix)){
+            if (hasMetadata(detection) && detection.metadata.name.startsWith(prefix)){
                 return detection;
             }
         }
@@ -102,7 +106,7 @@ public class AprilTagWebcam {
 
     public AprilTagDetection getTagByName(String name){
         for(AprilTagDetection detection: detectedTags){
-            if (detection.metadata.name.equals(name)){
+            if (hasMetadata(detection) && detection.metadata.name.equals(name)){
                 return detection;
             }
         }

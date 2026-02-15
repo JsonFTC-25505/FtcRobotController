@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
-public class HoodControll {
+public class HoodControl {
 
     private Servo hoodServo;
 

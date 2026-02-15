@@ -21,7 +21,7 @@ public class Trajectory {
 
     }
 
-    public AnglePair compute(int x){
+    public AnglePair compute(int x){ // WOW Holly Trajectory equation
         float angle1;
         float angle2;
 

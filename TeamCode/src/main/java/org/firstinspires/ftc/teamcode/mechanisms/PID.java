@@ -24,7 +24,6 @@ public class PID {
     private double integral;
     private long previousTimeMs;
 
-    // Optional clamps (tune as you like)
     private double outMin = -1.0, outMax = 1.0;
     private double iMin = -0.5, iMax = 0.5;
 
