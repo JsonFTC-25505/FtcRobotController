@@ -47,9 +47,10 @@ public class ColorSensor {
 //        telemetry.addData("blue", normB);
 
         // WARNING! TS NEEDS CALIBRATION FROM THE ACTUAL BALLS
-        if (normR > 0.35 && normG < 0.3 && normB > 0.35){
+        // WARNING NO MORE CALCULATED :3333 :> :>
+        if (normR > 1.9 && normG < 2.7 && normB > 1.8){
             return DetectedColor.PURPLE;
-        } else if (normR < 0.3 && normG > 0.35 && normB > 0.25) {
+        } else if (normR < 1.8 && normG > 1.9 && normB > 2.25) {
             return DetectedColor.GREEN;
         }
 
