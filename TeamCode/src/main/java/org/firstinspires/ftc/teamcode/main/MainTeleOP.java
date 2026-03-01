@@ -24,18 +24,20 @@ import org.firstinspires.ftc.teamcode.drivers.MPU6050;
 import org.firstinspires.ftc.teamcode.mechanisms.AprilTagWebcam;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
+import java.util.Objects;
+
 @TeleOp(name = "Main TeleOP")
 public class MainTeleOP extends LinearOpMode {
 
     private DcMotor frontLeft, frontRight, backLeft, backRight, intakeMotor;
 
-    private double speedScale = 0.5;
+    private final double speedScale = 0.5;
 
     private PID headingPID;
     private double headingRad = 0.0;
     private double targetHeadingRad = 0.0;
 
-    private double gyroBiasDps = 0.0; // if you calibrate
+    private double gyroBiasDps = 0.0;
     private boolean headingHoldActive = false;
 
     private boolean throwing;
@@ -47,6 +49,12 @@ public class MainTeleOP extends LinearOpMode {
         PGP,
         GPP
     }
+
+    public String teamColor = "Blue";
+    public double towerDistance;
+
+    // Just here to remember
+    public double maxShotingRange = 228;
 
     Balls ballCombination;
 
@@ -133,6 +141,8 @@ public class MainTeleOP extends LinearOpMode {
             if (ballCombination == null) {
                 ballCombination = getBallCombination();
             }
+            if (getTowerDistance() != null)
+                towerDistance = getTowerDistance().ftcPose.range;
             doTelemetry();
         }
     }
@@ -142,6 +152,13 @@ public class MainTeleOP extends LinearOpMode {
         if (tag == null) { return null; }
         String comp = tag.metadata.name.split("_")[1];
         return Balls.valueOf(comp);
+    }
+
+    private AprilTagDetection getTowerDistance(){
+        AprilTagDetection tag = aprilTagWebcam.getTagByName(teamColor + "Target");
+        if (tag == null) { return null; };
+
+        return tag;
     }
 
     private double deadband(double v) {
@@ -219,7 +236,7 @@ public class MainTeleOP extends LinearOpMode {
     }
 
     private void gamepadInput() {
-        speedGamepadController();
+        teamColorBumpController();
         hoodGamepadController();
         canonGamepadController();
         intakeGamepadController();
@@ -249,15 +266,14 @@ public class MainTeleOP extends LinearOpMode {
         }
     }
 
-    private void speedGamepadController() {
-        // Speed modes
-        if (gamepad1.left_bumper) {
-            speedScale = 0.4; // precision
-        } else if (gamepad1.right_bumper) {
-            speedScale = 1.0; // full speed
-        } else {
-            speedScale = 0.8; // default
-        }
+    private void teamColorBumpController() {
+        // TeamColor Switcher
+
+        if (gamepad1.right_bumper)
+            if (Objects.equals(teamColor, "Red"))
+                teamColor = "Blue";
+            else if (Objects.equals(teamColor, "Blue"))
+                    teamColor = "Red";
     }
 
     /**
@@ -303,6 +319,7 @@ public class MainTeleOP extends LinearOpMode {
         telemetry.addData("Dispense Power", "%.2f", dispensePower);
         telemetry.addData("Intake", intake);
         telemetry.addData("Ball Combination", ballCombination);
+        telemetry.addData("Tower Distance", towerDistance);
 
         telemetry.update();
     }
