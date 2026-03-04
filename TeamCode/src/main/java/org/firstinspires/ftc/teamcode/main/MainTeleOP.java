@@ -237,7 +237,7 @@ public class MainTeleOP extends LinearOpMode {
 
     private void canonGamepadController() {
         // Example mechanism control (range -1..1). Replace with your motor/CRServo as needed.
-        cannonController.setSpeed(gamepad1.right_trigger > 0.1);
+        cannonController.switchSpeed(gamepad1.right_trigger > 0.1);
         throwing = cannonController.canon.getVelocity() != 0;
     }
 
