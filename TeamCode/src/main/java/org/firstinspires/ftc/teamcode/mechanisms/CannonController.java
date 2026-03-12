@@ -53,12 +53,17 @@ public class CannonController {
             curTargetVelocity = noVelocity;
     }
 
-    public void setSpeed(boolean speed){
+    public void switchSpeed(boolean speed){
         if (speed)
             curTargetVelocity = highVelocity;
         else
             curTargetVelocity = noVelocity;
     }
+
+    public void setVelocity(double vel){
+        curTargetVelocity = vel;
+    }
+
 
     public void upStepIndex(){
         stepIndex = (stepIndex + 1) % stepSizes.length;
