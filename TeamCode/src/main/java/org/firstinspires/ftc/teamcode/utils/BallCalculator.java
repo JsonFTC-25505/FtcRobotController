@@ -25,7 +25,7 @@ public class BallCalculator extends OpMode {
         telemetry.addLine(String.valueOf(colors.g));
         telemetry.addLine(String.valueOf(colors.b));
 
-        ColorSensor.DetectedColor currentBall = colorSensor.geDetectedColor(telemetry);
+        ColorSensor.DetectedColor currentBall = colorSensor.getDetectedColor();
 
         telemetry.addLine(String.valueOf(currentBall));
         telemetry.update();

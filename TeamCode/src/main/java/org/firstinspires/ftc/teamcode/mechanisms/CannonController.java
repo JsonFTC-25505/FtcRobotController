@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
@@ -30,7 +31,7 @@ public class CannonController {
         canon = hardwareMap.get(DcMotorEx.class, "canon");
 
         canon.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-        canon.setDirection(DcMotorEx.Direction.REVERSE);
+        canon.setDirection(DcMotorEx.Direction.FORWARD);
 
         canon.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
     }

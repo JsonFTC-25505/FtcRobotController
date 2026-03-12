@@ -14,6 +14,7 @@ import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
@@ -21,7 +22,9 @@ import org.firstinspires.ftc.teamcode.mechanisms.CannonController;
 import org.firstinspires.ftc.teamcode.mechanisms.HoodControl;
 import org.firstinspires.ftc.teamcode.mechanisms.PID;
 import org.firstinspires.ftc.teamcode.drivers.MPU6050;
-import org.firstinspires.ftc.teamcode.mechanisms.AprilTagWebcam;
+import org.firstinspires.ftc.teamcode.mechanisms.Sorter;
+import org.firstinspires.ftc.teamcode.mechanisms.TransferController;
+import org.firstinspires.ftc.teamcode.mechanisms.WebcamProcessor;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
 import java.util.Objects;
@@ -44,7 +47,7 @@ public class MainTeleOP extends LinearOpMode {
     private boolean intake;
     private double dispensePower;
 
-    private enum Balls {
+    public enum Balls {
         PPG,
         PGP,
         GPP
@@ -58,7 +61,7 @@ public class MainTeleOP extends LinearOpMode {
 
     Balls ballCombination;
 
-    AprilTagWebcam aprilTagWebcam = new AprilTagWebcam();
+    WebcamProcessor webcamProcessor = new WebcamProcessor();
 
     HoodControl hoodControl = new HoodControl();
 
@@ -66,6 +69,10 @@ public class MainTeleOP extends LinearOpMode {
 
     ElapsedTime timer = new ElapsedTime();        // for PID dt
     ElapsedTime headingTimer = new ElapsedTime(); // for gyro integration dt
+
+    Sorter sorter = new Sorter();
+
+    TransferController transferController = new TransferController();
 
     private MPU6050 imu; // our MPU6050
 
@@ -91,7 +98,7 @@ public class MainTeleOP extends LinearOpMode {
 
         frontLeft.setDirection(DcMotor.Direction.REVERSE);
         backLeft.setDirection(DcMotor.Direction.REVERSE);
-        intakeMotor.setDirection(DcMotor.Direction.REVERSE);
+        intakeMotor.setDirection(DcMotor.Direction.FORWARD);
 
         throwing = false;
         intake = false;
@@ -104,12 +111,14 @@ public class MainTeleOP extends LinearOpMode {
 
         timer.reset();
         calibrateGyroZ();
-        aprilTagWebcam.init(hardwareMap, telemetry);
+        webcamProcessor.init(hardwareMap, telemetry);
     }
 
     private void initializeControllers(){
         hoodControl.init(hardwareMap, telemetry);
         cannonController.init(hardwareMap);
+        sorter.init(hardwareMap);
+        transferController.init(hardwareMap);
     }
 
     private void setupPID(){
@@ -137,7 +146,9 @@ public class MainTeleOP extends LinearOpMode {
             gamepadInput();
             mecanumDrive();
             cannonController.loop();
-            aprilTagWebcam.update();
+            sorter.loop();
+            transferController.loop(telemetry);
+            webcamProcessor.update();
             if (ballCombination == null) {
                 ballCombination = getBallCombination();
             }
@@ -148,14 +159,14 @@ public class MainTeleOP extends LinearOpMode {
     }
 
     private Balls getBallCombination(){
-        AprilTagDetection tag = aprilTagWebcam.getTagByPrefix("Obelisk_");
+        AprilTagDetection tag = webcamProcessor.getTagByPrefix("Obelisk_");
         if (tag == null) { return null; }
         String comp = tag.metadata.name.split("_")[1];
         return Balls.valueOf(comp);
     }
 
     private AprilTagDetection getTowerDistance(){
-        AprilTagDetection tag = aprilTagWebcam.getTagByName(teamColor + "Target");
+        AprilTagDetection tag = webcamProcessor.getTagByName(teamColor + "Target");
         if (tag == null) { return null; };
 
         return tag;
@@ -240,6 +251,26 @@ public class MainTeleOP extends LinearOpMode {
         hoodGamepadController();
         canonGamepadController();
         intakeGamepadController();
+        sorterController();
+        transferInputController();
+    }
+
+    private void sorterController() {
+        // Manual control with dpad
+        sorter.manualControl(gamepad1.dpad_right, gamepad1.dpad_left);
+
+        // Auto shoot
+        if (gamepad1.y) {
+            sorter.shoot(ballCombination);
+        }
+    }
+
+    private void transferInputController()
+    {
+        if (gamepad1.dpad_up)
+            transferController.lookUp();
+        if (gamepad1.dpad_down)
+            transferController.lookDown();
     }
 
     private void intakeGamepadController() {

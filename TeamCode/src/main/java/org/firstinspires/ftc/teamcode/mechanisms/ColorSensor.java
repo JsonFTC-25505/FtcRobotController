@@ -12,29 +12,44 @@
 
 package org.firstinspires.ftc.teamcode.mechanisms;
 
+import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 
-import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.utils.RGBBundle;
 
+@Config
 public class ColorSensor {
 
     NormalizedColorSensor colorSensor;
 
     public enum DetectedColor {
-        GREEN,
-        PURPLE,
+        G,
+        P,
+        B, // black
         UNKNOWN
     }
+
+    public static double PR = 1.9;
+    public static double PG = 2.7;
+    public static double PB = 1.8;
+
+    public static double GR = 1.8;
+    public static double GG = 1.9;
+    public static double GB = 2.25;
+
+    public static double BR = 0.5;
+    public static double BG = 0.5;
+    public static double BB = 0.5;
 
     public void init(HardwareMap hardwareMap){
         colorSensor = hardwareMap.get(NormalizedColorSensor.class, "colorS");
         colorSensor.setGain(8);
+
     }
 
-    public DetectedColor geDetectedColor(Telemetry telemetry){
+    public DetectedColor getDetectedColor(){
         NormalizedRGBA colors = colorSensor.getNormalizedColors();
 
         float normR, normG, normB;
@@ -47,11 +62,13 @@ public class ColorSensor {
 //        telemetry.addData("blue", normB);
 
         // WARNING! TS NEEDS CALIBRATION FROM THE ACTUAL BALLS
-        // WARNING NO MORE CALCULATED :3333 :> :>
-        if (normR > 1.9 && normG < 2.7 && normB > 1.8){
-            return DetectedColor.PURPLE;
-        } else if (normR < 1.8 && normG > 1.9 && normB > 2.25) {
-            return DetectedColor.GREEN;
+        // WARNING NO MORE, CALCULATED :3333 :> :>
+        if (normR > PR && normG < PG && normB > PB){
+            return DetectedColor.P;
+        } else if (normR < GR && normG > GG && normB > GB) {
+            return DetectedColor.G;
+        } else if (normR < BR && normG < BG && normB < BB){
+            return DetectedColor.B;
         }
 
         return DetectedColor.UNKNOWN;

@@ -1,10 +1,11 @@
 // COPYRIGHT ODYSSEAS CHRYSSOS | JsonFtc TALOS 2025-2026
 //
 // Main Autonomous System For the JsonFTC (TalOS) team.
-// Currently: Recognises april tags and "lock" into them
-// To-DO:
-// - Make Search For AprilTag Mode (also needs to be implemented on teleOP so i will do it in its own class.)
-// - Make the moving part of the roboto so it can complete mission.
+// Ball chase version:
+// - SEARCH: rotate until a valid ball is found
+// - APPROACH: center on the ball and drive in while intaking
+// - SECURE: keep driving a little after likely capture
+// - HOLD: stop and keep light intake power
 //
 
 package org.firstinspires.ftc.teamcode.main;
@@ -18,40 +19,59 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
-import org.firstinspires.ftc.teamcode.mechanisms.PID;
 import org.firstinspires.ftc.teamcode.drivers.MPU6050;
-import org.firstinspires.ftc.teamcode.mechanisms.AprilTagWebcam;
-import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+import org.firstinspires.ftc.teamcode.mechanisms.ColorSensor;
+import org.firstinspires.ftc.teamcode.mechanisms.PID;
+import org.firstinspires.ftc.teamcode.mechanisms.WebcamProcessor;
+import org.firstinspires.ftc.vision.opencv.ColorBlobLocatorProcessor;
 
 @Config
 @Autonomous(name = "Main OP")
 public class MainOP extends OpMode {
 
-    // ========= MotoConfig =========
+    // ========= Motor Config =========
     private DcMotor frontLeft, frontRight, backLeft, backRight, intakeMotor;
     private double speedScale = 0.7;
 
-    // ========= PID Config =========
+    // ========= Old PID / IMU Config (kept for later use if needed) =========
     private PID headingPID;
     private double headingRad = 0.0;
     private double targetHeadingRad = 0.0;
     private double gyroBiasDps = 0.0;
-    private double lastError = 0;
-    boolean tracking = false;
-    public static double BEARING_DEADBAND = 0.03; // rad ~ 1.7deg
-    public static double maxAutoTurn = 0.6;
-
     private MPU6050 imu;
 
-    ElapsedTime timer = new ElapsedTime();        // for PID dt
-    ElapsedTime headingTimer = new ElapsedTime(); // for gyro integration dt
+    ElapsedTime headingTimer = new ElapsedTime();
 
-    // ========= AprilTag Config =========
-    public static int tagId = 24;
+    WebcamProcessor webcamProcessor = new WebcamProcessor();
 
-    AprilTagWebcam aprilTagWebcam = new AprilTagWebcam();
+    // ========= Ball Chase Config =========
+    public static double BALL_CENTER_X = 320.0;      // 640x480 image center
+    public static double BALL_X_DEADBAND = 14.0;     // px
+    public static double BALL_TURN_GAIN = 0.0035;    // turn per pixel
+    public static double MAX_BALL_TURN = 0.40;
 
-    // ========= ColorSensor Config =========
+    public static double SEARCH_TURN_POWER = 0.4;
+    public static double APPROACH_POWER = 1.0;
+    public static double ALIGN_ONLY_ERROR = 35.0;    // rotate first if too far off center
+    public static double INTAKE_POWER = -1.0;
+
+    public static double LOST_CLOSE_RADIUS = 1000.0;   // if blob vanishes after this radius, assume captured
+    public static double SECURE_DRIVE_POWER = 0.12;
+    public static double SECURE_TIME = 0.35;         // seconds
+
+    private enum AutoState {
+        SEARCH,
+        APPROACH,
+        SECURE,
+        HOLD
+    }
+
+    private AutoState autoState = AutoState.SEARCH;
+    private ElapsedTime stateTimer = new ElapsedTime();
+    private double lastSeenTurnSign = 1.0;
+    private double lastSeenRadius = 0.0;
+
+    ColorSensor colorSensor = new ColorSensor();
 
     public double angleWrap(double radians) {
         while (radians > Math.PI) {
@@ -62,7 +82,6 @@ public class MainOP extends OpMode {
         }
         return radians;
     }
-
 
     private void calibrateGyroZ() {
         telemetry.addLine("Calibrating gyro Z... DO NOT MOVE ROBOT");
@@ -91,12 +110,12 @@ public class MainOP extends OpMode {
     private void updateHeadingFromGyro() {
         MPU6050.Sample s = imu.readSample();
 
-        double dt = headingTimer.seconds();   // seconds since last call
+        double dt = headingTimer.seconds();
         headingTimer.reset();
         if (dt < 1e-4) dt = 1e-4;
 
-        double gzDps = s.gzDps - gyroBiasDps;        // deg/s
-        double gzRadPerSec = Math.toRadians(gzDps);  // rad/s
+        double gzDps = s.gzDps - gyroBiasDps;
+        double gzRadPerSec = Math.toRadians(gzDps);
 
         headingRad = angleWrap(headingRad - gzRadPerSec * dt);
     }
@@ -109,83 +128,172 @@ public class MainOP extends OpMode {
     }
 
     @Override
-    public void init()
-    {
+    public void init() {
         // ========= Motor Setup =========
-
         frontLeft = hardwareMap.get(DcMotor.class, "frontLeft");
         frontRight = hardwareMap.get(DcMotor.class, "frontRight");
         backLeft = hardwareMap.get(DcMotor.class, "backLeft");
         backRight = hardwareMap.get(DcMotor.class, "backRight");
+        intakeMotor = hardwareMap.get(DcMotor.class, "intake");
 
         frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         frontLeft.setDirection(DcMotor.Direction.REVERSE);
         backLeft.setDirection(DcMotor.Direction.REVERSE);
 
+        frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
         initializeTelemetry();
 
+        // ========= ColorSensor =======
+
+        colorSensor.init(hardwareMap);
+
+        // ========= IMU Setup (optional for later use) =========
         imu = hardwareMap.get(MPU6050.class, "imu");
         imu.initialize();
 
-        timer.reset();
         calibrateGyroZ();
         headingTimer.reset();
-        updateHeadingFromGyro();              // get a first sample
+        updateHeadingFromGyro();
         targetHeadingRad = headingRad;
         headingPID = new PID(targetHeadingRad);
         headingPID.reset();
 
+        // ========= State Init =========
+        autoState = AutoState.SEARCH;
+        stateTimer.reset();
+        lastSeenTurnSign = 1.0;
+        lastSeenRadius = 0.0;
 
-        aprilTagWebcam.init(hardwareMap, telemetry);
+        webcamProcessor.init(hardwareMap, telemetry);
+    }
+
+    private void setDrive(double drive, double turn) {
+        double left = Range.clip(drive + turn, -1.0, 1.0) * speedScale;
+        double right = Range.clip(drive - turn, -1.0, 1.0) * speedScale;
+
+        frontLeft.setPower(left);
+        backLeft.setPower(left);
+        frontRight.setPower(right);
+        backRight.setPower(right);
+    }
+
+    private void setIntake(double power) {
+        if (intakeMotor != null) {
+            intakeMotor.setPower(power);
+        }
     }
 
     @Override
     public void loop() {
-        aprilTagWebcam.update();
-        AprilTagDetection det = aprilTagWebcam.getTagById(tagId);
-        aprilTagWebcam.aprilTagTelemetry(det);
+        webcamProcessor.update();
 
-        updateHeadingFromGyro();
+        ColorBlobLocatorProcessor.Blob ball = webcamProcessor.getBestBlob();
+        webcamProcessor.blobTelemetry(ball);
 
-        double rx = 0.0;
+        double drive = 0.0;
+        double turn = 0.0;
 
-        if (det != null) {
-            double bearing = det.ftcPose.bearing; // radians
+        if (ball != null) {
+            double errorPxNow = ball.getCircle().getX() - BALL_CENTER_X;
+            lastSeenRadius = ball.getCircle().getRadius();
 
-            // deadband to avoid jitter when almost centered
-            if (Math.abs(bearing) < BEARING_DEADBAND) bearing = 0.0;
-
-            // if this turns the wrong way, flip the sign (+bearing instead of -bearing)
-            targetHeadingRad = angleWrap(headingRad - bearing);
-
-            headingPID.setSetPoint(targetHeadingRad);
-
-            // reset only ONCE when we first acquire the tag (or after being lost)
-            if (!tracking) {
-                headingPID.reset();
-                tracking = true;
+            if (Math.abs(errorPxNow) > 1e-3) {
+                lastSeenTurnSign = Math.signum(errorPxNow);
             }
-
-            double correction = headingPID.computeAngle(headingRad);
-            rx = Range.clip(correction, -maxAutoTurn, maxAutoTurn);
-
-        } else {
-            tracking = false;
-            rx = 0.0; // or a small constant to SEARCH, like 0.15
         }
 
-        frontLeft.setPower( rx * speedScale);
-        backLeft.setPower(  rx * speedScale);
-        frontRight.setPower(-rx * speedScale);
-        backRight.setPower( -rx * speedScale);
+        switch (autoState) {
+            case SEARCH: {
+                setIntake(0.0);
 
-        telemetry.addData("headingRad", headingRad);
-        telemetry.addData("targetHeadingRad", targetHeadingRad);
-        if (det != null) telemetry.addData("bearing", det.ftcPose.bearing);
-        telemetry.addData("rx", rx);
+                if (ball != null) {
+                    autoState = AutoState.APPROACH;
+                    stateTimer.reset();
+                    drive = 0.0;
+                    turn = 0.0;
+                } else {
+                    turn = SEARCH_TURN_POWER * lastSeenTurnSign;
+                }
+                break;
+            }
+
+            case APPROACH: {
+                setIntake(INTAKE_POWER);
+
+                if (ball == null) {
+                    if (colorSensor.getDetectedColor() != ColorSensor.DetectedColor.B && colorSensor.getDetectedColor() != ColorSensor.DetectedColor.UNKNOWN) {
+                        autoState = AutoState.SECURE;
+                        stateTimer.reset();
+                    } else {
+                        autoState = AutoState.SEARCH;
+                    }
+                    break;
+                }
+
+                double errorPx = ball.getCircle().getX() - BALL_CENTER_X;
+
+                if (Math.abs(errorPx) < BALL_X_DEADBAND) {
+                    errorPx = 0.0;
+                }
+
+                // Negated because your robot was turning the wrong way before
+                turn = Range.clip(-errorPx * BALL_TURN_GAIN, -MAX_BALL_TURN, MAX_BALL_TURN);
+
+                // Rotate first, only drive when centered enough
+                if (Math.abs(errorPx) > ALIGN_ONLY_ERROR) {
+                    drive = 0.0;
+                } else {
+                    drive = APPROACH_POWER;
+                }
+                break;
+            }
+
+            case SECURE: {
+                setIntake(INTAKE_POWER);
+                drive = SECURE_DRIVE_POWER;
+                turn = 0.0;
+
+                if (stateTimer.seconds() >= SECURE_TIME) {
+                    autoState = AutoState.HOLD;
+                }
+                break;
+            }
+
+            case HOLD: {
+                drive = 0.0;
+                turn = 0.0;
+                setIntake(-0.25); // light holding power
+                break;
+            }
+        }
+
+        setDrive(drive, turn);
+
+        telemetry.addData("state", autoState);
+        telemetry.addData("drive", drive);
+        telemetry.addData("turn", turn);
+        telemetry.addData("lastSeenRadius", lastSeenRadius);
+
+        if (ball != null) {
+            telemetry.addData("ballX", ball.getCircle().getX());
+            telemetry.addData("ballY", ball.getCircle().getY());
+            telemetry.addData("ballRadius", ball.getCircle().getRadius());
+            telemetry.addData("ballErrorPx", ball.getCircle().getX() - BALL_CENTER_X);
+            telemetry.addData("ballCircularity", ball.getCircularity());
+            telemetry.addData("ballDensity", ball.getDensity());
+        } else {
+            telemetry.addLine("No valid ball detected");
+        }
+
+        telemetry.update();
     }
 }
