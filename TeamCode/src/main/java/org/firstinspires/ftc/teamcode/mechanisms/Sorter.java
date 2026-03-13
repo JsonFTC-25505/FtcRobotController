@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.mechanisms;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.main.MainTeleOP;
 
 import java.util.LinkedList;
@@ -27,20 +28,21 @@ public class Sorter {
         turner = hardwareMap.get(CRServo.class, "sorterServo");
     }
 
-    public void loop() {
+    public void loop(Telemetry telemetry) {
         // If driver is manually controlling the sorter, do not run auto logic
-        if (manualOverride) {
-            return;
-        }
+//        if (manualOverride) {
+//            return;
+//        }
 
         ColorSensor.DetectedColor detectedColor = colorSensor.getDetectedColor();
 
+        telemetry.addLine(String.valueOf(detectedColor));
         if (detectedColor != ColorSensor.DetectedColor.UNKNOWN &&
-                detectedColor != ColorSensor.DetectedColor.B) {
+                detectedColor != ColorSensor.DetectedColor.B && detectedColor != ColorSensor.DetectedColor.W) {
 
             ballsList.add(detectedColor.toString());
 
-            while (detectedColor != ColorSensor.DetectedColor.UNKNOWN) {
+            while (detectedColor != ColorSensor.DetectedColor.W) {
                 turner.setPower(1);   // one direction for indexing
                 detectedColor = colorSensor.getDetectedColor();
             }
@@ -55,16 +57,16 @@ public class Sorter {
      * left  = counter-clockwise
      */
     public void manualControl(boolean right, boolean left) {
-        if (right && !left) {
-            manualOverride = true;
-            turner.setPower(1.0);
-        } else if (left && !right) {
-            manualOverride = true;
-            turner.setPower(-1.0);
-        } else {
-            manualOverride = false;
-            turner.setPower(0.0);
-        }
+//        if (right && !left) {
+//            manualOverride = true;
+//            turner.setPower(1.0);
+//        } else if (left && !right) {
+//            manualOverride = true;
+//            turner.setPower(-1.0);
+//        } else {
+//            manualOverride = false;
+//            turner.setPower(0.0);
+//        }
     }
 
     public void stop() {
@@ -99,7 +101,7 @@ public class Sorter {
         trajectory.compute(0); // need real numbers
         currentColor = colorSensor.getDetectedColor();
 
-        while (currentColor != ColorSensor.DetectedColor.UNKNOWN) {
+        while (currentColor != ColorSensor.DetectedColor.W) {
             turner.setPower(1.0);
             currentColor = colorSensor.getDetectedColor();
         }

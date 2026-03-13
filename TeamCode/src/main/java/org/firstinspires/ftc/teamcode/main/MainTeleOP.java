@@ -146,7 +146,7 @@ public class MainTeleOP extends LinearOpMode {
             gamepadInput();
             mecanumDrive();
             cannonController.loop();
-            sorter.loop();
+            sorter.loop(telemetry);
             transferController.loop(telemetry);
             webcamProcessor.update();
             if (ballCombination == null) {

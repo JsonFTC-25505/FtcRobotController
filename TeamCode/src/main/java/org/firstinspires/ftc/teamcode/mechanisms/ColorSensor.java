@@ -28,20 +28,25 @@ public class ColorSensor {
         G,
         P,
         B, // black
+        W, // WHITE
         UNKNOWN
     }
 
-    public static double PR = 1.9;
-    public static double PG = 2.7;
-    public static double PB = 1.8;
+    public static double PR = 0.075;
+    public static double PG = 0.12;
+    public static double PB = 0.13;
 
-    public static double GR = 1.8;
-    public static double GG = 1.9;
-    public static double GB = 2.25;
+    public static double GR = 0.09;
+    public static double GG = 0.123;
+    public static double GB = 0.095;
 
-    public static double BR = 0.5;
-    public static double BG = 0.5;
-    public static double BB = 0.5;
+    public static double BR = 0.13;
+    public static double BG = 0.195;
+    public static double BB = 0.16;
+
+    public static double WR = 1;
+    public static double WG = 0.9;
+    public static double WB = 0.9;
 
     public void init(HardwareMap hardwareMap){
         colorSensor = hardwareMap.get(NormalizedColorSensor.class, "colorS");
@@ -67,8 +72,10 @@ public class ColorSensor {
             return DetectedColor.P;
         } else if (normR < GR && normG > GG && normB > GB) {
             return DetectedColor.G;
-        } else if (normR < BR && normG < BG && normB < BB){
+        } else if (normR < BR && normG > BG && normB > BB){
             return DetectedColor.B;
+        } else if (normR < WR && normG > WG && normB > WB){
+            return DetectedColor.W;
         }
 
         return DetectedColor.UNKNOWN;
