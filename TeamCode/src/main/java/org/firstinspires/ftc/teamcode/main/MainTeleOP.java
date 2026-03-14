@@ -34,7 +34,7 @@ public class MainTeleOP extends LinearOpMode {
 
     private DcMotor frontLeft, frontRight, backLeft, backRight, intakeMotor;
 
-    private final double speedScale = 0.5;
+    private final double speedScale = 0.8;
 
     private PID headingPID;
     private double headingRad = 0.0;
@@ -59,6 +59,8 @@ public class MainTeleOP extends LinearOpMode {
     // Just here to remember
     public double maxShotingRange = 228;
 
+    public boolean lowMode = false;
+
     Balls ballCombination;
 
     WebcamProcessor webcamProcessor = new WebcamProcessor();
@@ -75,6 +77,15 @@ public class MainTeleOP extends LinearOpMode {
     TransferController transferController = new TransferController();
 
     private MPU6050 imu; // our MPU6050
+
+    private boolean lastShootButton = false;
+    private boolean lastSeekBlackNowButton = false;
+    private boolean lastSeekNextBlackButton = false;
+
+    private boolean lastLowModeButton = false;
+    private boolean lastTeamColorButton = false;
+
+    private boolean intakeReverse = false;
 
     private void initializeTelemetry() {
         telemetry = new MultipleTelemetry(
@@ -145,10 +156,13 @@ public class MainTeleOP extends LinearOpMode {
             updateHeadingFromGyro();
             gamepadInput();
             mecanumDrive();
-            cannonController.loop();
-            sorter.loop(telemetry);
+            cannonController.loop(lowMode);
+            sorter.loop(telemetry, gamepad1);
             transferController.loop(telemetry);
             webcamProcessor.update();
+//            if (lowMode && !intake){
+//                intakeMotor.setPower(0.4);
+//            }
             if (ballCombination == null) {
                 ballCombination = getBallCombination();
             }
@@ -251,35 +265,45 @@ public class MainTeleOP extends LinearOpMode {
         hoodGamepadController();
         canonGamepadController();
         intakeGamepadController();
-        sorterController();
         transferInputController();
+        lowModeController();
     }
 
-    private void sorterController() {
-        // Manual control with dpad
-        sorter.manualControl(gamepad1.dpad_right, gamepad1.dpad_left);
 
-        // Auto shoot
-        if (gamepad1.y) {
-            sorter.shoot(ballCombination);
+    private void lowModeController() {
+        boolean pressed = gamepad1.y;
+
+        if (pressed && !lastLowModeButton) {
+            lowMode = !lowMode;
         }
+
+        lastLowModeButton = pressed;
     }
 
     private void transferInputController()
     {
         if (gamepad1.dpad_up)
             transferController.lookUp();
-        if (gamepad1.dpad_down)
+        else
             transferController.lookDown();
     }
 
     private void intakeGamepadController() {
         if (gamepad1.left_trigger > 0.1) {
             intake = true;
-            intakeMotor.setPower(1.0);
+            intakeMotor.setPower(0.8);
         } else {
             intake = false;
             intakeMotor.setPower(0);
+        }
+
+        if(gamepad1.x && !gamepad1.xWasPressed()){
+            if (intakeReverse)
+                intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
+            else
+                intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+
+            intakeReverse = !intakeReverse;
         }
     }
 
@@ -298,13 +322,13 @@ public class MainTeleOP extends LinearOpMode {
     }
 
     private void teamColorBumpController() {
-        // TeamColor Switcher
+        boolean pressed = gamepad1.right_bumper;
 
-        if (gamepad1.right_bumper)
-            if (Objects.equals(teamColor, "Red"))
-                teamColor = "Blue";
-            else if (Objects.equals(teamColor, "Blue"))
-                    teamColor = "Red";
+        if (pressed && !lastTeamColorButton) {
+            teamColor = Objects.equals(teamColor, "Red") ? "Blue" : "Red";
+        }
+
+        lastTeamColorButton = pressed;
     }
 
     /**

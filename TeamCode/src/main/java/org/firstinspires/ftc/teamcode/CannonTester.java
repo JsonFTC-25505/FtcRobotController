@@ -22,6 +22,6 @@ public class CannonTester extends OpMode {
     @Override
     public void loop() {
         cannonController.setVelocity(velocity);
-        cannonController.loop();
+        cannonController.loop(false);
     }
 }

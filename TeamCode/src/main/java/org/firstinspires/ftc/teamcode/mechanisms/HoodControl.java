@@ -21,7 +21,7 @@ public class HoodControl {
         hoodServo = hardwareMap.get(Servo.class, "hoodServo");
 
         // Optional: start centered (0° -> 0.5)
-        setAngleDeg(0f);
+        setAngleDeg(110f);
     }
 
     /** Set hood angle in degrees: -135 .. +135 */

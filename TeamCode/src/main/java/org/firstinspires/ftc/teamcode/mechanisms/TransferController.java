@@ -7,7 +7,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 public class TransferController {
 
-    private Servo servo;
+    public Servo servo;
 
     private double currentDegrees = 0.9; // start in the bottom
 
@@ -30,7 +30,7 @@ public class TransferController {
 
     public void lookUp(){
 
-        currentDegrees = 0.65;
+        currentDegrees = 0.624;
     }
 
 }

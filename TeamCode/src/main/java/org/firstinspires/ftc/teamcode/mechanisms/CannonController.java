@@ -8,6 +8,8 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
+import org.firstinspires.ftc.teamcode.main.MainTeleOP;
+
 public class CannonController {
 
     public DcMotorEx canon;
@@ -36,22 +38,26 @@ public class CannonController {
         canon.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
     }
 
-    public void loop(){
+    public void loop(boolean lowMode){
         updatePIDFCoEf();
         canon.setVelocity(curTargetVelocity);
 
         double curVelocity = canon.getVelocity();
         double error = curTargetVelocity - curVelocity;
+
+        if (lowMode && curTargetVelocity != highVelocity){
+            canon.setVelocity(lowVelocity);
+        }
     }
 
-    public void switchSpeed() {
-        if (curTargetVelocity == highVelocity)
-            curTargetVelocity = lowVelocity;
-        else if (curTargetVelocity == lowVelocity)
-            curTargetVelocity = highVelocity;
-        else
-            curTargetVelocity = noVelocity;
-    }
+//    public void switchSpeed() {
+//        if (curTargetVelocity == highVelocity)
+//            curTargetVelocity = lowVelocity;
+//        else if (curTargetVelocity == lowVelocity)
+//            curTargetVelocity = highVelocity;
+//        else
+//            curTargetVelocity = noVelocity;
+//    }
 
     public void switchSpeed(boolean speed){
         if (speed)

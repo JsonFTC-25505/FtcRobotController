@@ -1,11 +1,13 @@
-// COPYRIGHT ODYSSEAS CHRYSSOS | JsonFtc TALOS 2025-2026
-//
-// Trajectory Calculator for Objects
-//
-// Methods:
-// Name         | Arguments | Action
-// compute()    | int x     | Calculates & returns the 2 possible angles for the dispenser based on distance (x)
-//
+/**
+* COPYRIGHT ODYSSEAS CHRYSSOS | JsonFtc TALOS 2025-2026
+*
+* Trajectory Calculator for Objects
+*
+* Methods:
+* Name         | Arguments | Action
+* compute()    | int x     | Calculates & returns the 2 possible angles for the dispenser based on distance (x)
+*
+ */
 
 package org.firstinspires.ftc.teamcode.mechanisms;
 
